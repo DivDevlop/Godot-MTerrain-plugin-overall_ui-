@@ -38,6 +38,7 @@ void MTerrainMaterial::_bind_methods() {
 
 
 void MTerrainMaterial::set_shader(Ref<Shader> input) {
+    std::lock_guard<std::mutex> lock(material_mutex);
     if(show_region){
         set_show_region(false);
     }
@@ -78,6 +79,7 @@ Ref<Shader> MTerrainMaterial::get_default_shader(){
 }
 
 Ref<Shader> MTerrainMaterial::get_currect_shader(){
+    std::lock_guard<std::mutex> lock(material_mutex);
     if(shader.is_valid()){
         return shader;
     }
@@ -90,18 +92,22 @@ Ref<Shader> MTerrainMaterial::get_currect_shader(){
 }
 
 void MTerrainMaterial::set_uniforms(Dictionary input){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     uniforms = input;
 }
 
 Dictionary MTerrainMaterial::get_uniforms(){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     return uniforms;
 }
 
 void MTerrainMaterial::set_next_passes(Dictionary input){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     next_passes = input;
 }
 
 Dictionary MTerrainMaterial::get_next_passes(){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     return next_passes;
 }
 
@@ -270,6 +276,7 @@ void MTerrainMaterial::_shader_code_changed(){
 }
 
 void MTerrainMaterial::set_active_region(int input){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     ERR_FAIL_COND_EDMSG(input!=-1 && !is_loaded,"You need to create the terrain to change this!");
     ERR_FAIL_COND(!grid);
     ERR_FAIL_COND(!grid->is_created());
@@ -279,10 +286,12 @@ void MTerrainMaterial::set_active_region(int input){
     notify_property_list_changed();
 }
 int MTerrainMaterial::get_active_region(){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     return active_region;
 }
 
 void MTerrainMaterial::set_clear_all(bool input){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     if(active_region==-1){
         return;
     }
@@ -295,6 +304,7 @@ bool MTerrainMaterial::get_clear_all() {
 }
 
 void MTerrainMaterial::set_show_region(bool input){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     if(!is_loaded){
         show_region = false;
         return;
@@ -328,6 +338,7 @@ void MTerrainMaterial::set_grid(MGrid* g) {
 }
 
 RID MTerrainMaterial::get_material(int region_id){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     if(materials.has(region_id)){
         return materials[region_id];
     }
@@ -360,6 +371,7 @@ RID MTerrainMaterial::get_material(int region_id){
 }
 
 void MTerrainMaterial::remove_material(int region_id){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     if(!materials.has(region_id)){
         return;
     }
@@ -368,6 +380,7 @@ void MTerrainMaterial::remove_material(int region_id){
 }
 
 void MTerrainMaterial::load_images(Array images_names,Ref<MResource> first_res){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     /*
         terrain_textures_names come from shader uniform which has mterrain_ prefix
         images_names come from data directory
@@ -410,6 +423,7 @@ void MTerrainMaterial::load_images(Array images_names,Ref<MResource> first_res){
 }
 
 void MTerrainMaterial::clear(){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     show_region = false;
 	for(int i=0;i<all_images.size();i++){
 		memdelete(all_images[i]);
@@ -427,6 +441,7 @@ void MTerrainMaterial::clear(){
 }
 
 void MTerrainMaterial::add_terrain_image(StringName name, bool is_ram_image, Image::Format _f) {
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     String uniform_name = "mterrain_" + name;
     MGridPos region_grid_size = grid->get_region_grid_size();
     for(int z=0; z<region_grid_size.z;z++){
@@ -448,6 +463,7 @@ void MTerrainMaterial::add_terrain_image(StringName name, bool is_ram_image, Ima
 }
 
 void MTerrainMaterial::create_empty_terrain_image(StringName name,Image::Format format){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     String uniform_name = "mterrain_" + name;
     MGridPos region_grid_size = grid->get_region_grid_size();
     for(int z=0; z<region_grid_size.z;z++){
@@ -468,6 +484,7 @@ void MTerrainMaterial::create_empty_terrain_image(StringName name,Image::Format 
 }
 
 int MTerrainMaterial::get_texture_id(const String& name){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     if(!terrain_textures_ids.has(name)){
         if(name.is_empty()){
             //WARN_PRINT("Texture name is empty");
@@ -480,6 +497,7 @@ int MTerrainMaterial::get_texture_id(const String& name){
 }
 
 PackedStringArray MTerrainMaterial::get_textures_list(){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     return terrain_textures_added;
 }
 
@@ -493,6 +511,7 @@ void MTerrainMaterial::set_uniform(RID mat,StringName uname,Variant value){
 }
 
 void MTerrainMaterial::set_default_uniform(StringName uname,Variant value){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     for(HashMap<int,RID>::Iterator it=materials.begin();it!=materials.end();++it){
         if(uniforms.has(it->key)){
             Dictionary ureg = uniforms[it->key];
@@ -505,6 +524,7 @@ void MTerrainMaterial::set_default_uniform(StringName uname,Variant value){
 }
 
 void MTerrainMaterial::back_to_default_uniform(int region_id,StringName uname){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     ERR_FAIL_COND(region_id==-1);
     ERR_FAIL_COND(!materials.has(region_id));
     ERR_FAIL_COND(!uniforms.has(-1));
@@ -517,6 +537,7 @@ void MTerrainMaterial::back_to_default_uniform(int region_id,StringName uname){
 }
 
 void MTerrainMaterial::back_all_to_default_uniform(int region_id){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     ERR_FAIL_COND(region_id==-1);
     ERR_FAIL_COND(!materials.has(region_id));
     ERR_FAIL_COND(!uniforms.has(-1));
@@ -533,6 +554,7 @@ void MTerrainMaterial::back_all_to_default_uniform(int region_id){
 }
 
 void MTerrainMaterial::refresh_all_uniform(){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     for(HashMap<int,RID>::Iterator it=materials.begin();it!=materials.end();++it){
         RID m = it->value;
         int region_id = it->key;
@@ -563,6 +585,7 @@ void MTerrainMaterial::refresh_all_uniform(){
 }
 
 void MTerrainMaterial::clear_all_uniform(){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     for(HashMap<int,RID>::Iterator it=materials.begin();it!=materials.end();++it){
         RID m = it->value;
         int region_id = it->key;
@@ -581,6 +604,7 @@ PackedStringArray MTerrainMaterial::get_reserved_uniforms() const{
 }
 
 void MTerrainMaterial::set_next_pass(int region_id){
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     if(region_id==-1){
         for(HashMap<int,RID>::Iterator it=materials.begin();it!=materials.end();++it){
             if(next_passes.has(it->key)){
@@ -625,6 +649,7 @@ void MTerrainMaterial::set_next_pass(int region_id){
 }
 
 void MTerrainMaterial::set_all_next_passes() {
+    std::lock_guard<std::recursive_mutex> lock(material_mutex);
     for(HashMap<int,RID>::Iterator it=materials.begin();it!=materials.end();++it){
         if(next_passes.has(it->key)){
             Dictionary npm = next_passes[it->key];

@@ -1,7 +1,7 @@
 #ifndef MTERRAINMATERIAL
 #define MTERRAINMATERIAL
 
-
+#include <mutex>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/classes/shader.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -24,6 +24,7 @@ class MTerrainMaterial : public Resource {
     static void _bind_methods();
 
     private:
+    mutable std::recursive_mutex material_mutex;
     bool is_loaded=false;
     MGrid* grid=nullptr;
     Ref<Shader> shader;
